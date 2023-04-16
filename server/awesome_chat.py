@@ -62,15 +62,15 @@ if log_file:
 LLM = config["model"]
 use_completion = config["use_completion"]
 
-# consistent: wrong msra model name 
+# consistent: wrong msra model name
 LLM_encoding = LLM
 if LLM == "gpt-3.5-turbo":
     LLM_encoding = "text-davinci-003"
 task_parsing_highlight_ids = get_token_ids_for_task_parsing(LLM_encoding)
 choose_model_highlight_ids = get_token_ids_for_choose_model(LLM_encoding)
 
-# ENDPOINT	MODEL NAME	
-# /v1/chat/completions	gpt-4, gpt-4-0314, gpt-4-32k, gpt-4-32k-0314, gpt-3.5-turbo, gpt-3.5-turbo-0301	
+# ENDPOINT	MODEL NAME
+# /v1/chat/completions	gpt-4, gpt-4-0314, gpt-4-32k, gpt-4-32k-0314, gpt-3.5-turbo, gpt-3.5-turbo-0301
 # /v1/completions	text-davinci-003, text-davinci-002, text-curie-001, text-babbage-001, text-ada-001, davinci, curie, babbage, ada
 
 if use_completion:
@@ -173,7 +173,7 @@ def send_request(data):
         data = convert_chat_to_completion(data)
     HEADER = {
         "Authorization": f"Bearer {openaikey}"
-    }    
+    }
     response = requests.post(endpoint, json=data, headers=HEADER, proxies=PROXY)
     if "error" in response.json():
         return response.json()
@@ -272,7 +272,7 @@ def unfold(tasks):
 
     if flag_unfold_task:
         logger.debug(f"unfold tasks: {tasks}")
-        
+
     return tasks
 
 def chitchat(messages, openaikey=None):
@@ -294,7 +294,7 @@ def parse_task(context, input, openaikey=None):
         history = context[start:]
         prompt = replace_slot(parse_task_prompt, {
             "input": input,
-            "context": history 
+            "context": history
         })
         messages.append({"role": "user", "content": prompt})
         history_text = "<im_end>\nuser<im_start>".join([m["content"] for m in messages])
@@ -303,7 +303,7 @@ def parse_task(context, input, openaikey=None):
             break
         messages.pop()
         start += 2
-    
+
     logger.debug(messages)
     data = {
         "model": LLM,
@@ -363,7 +363,7 @@ def response_results(input, results, openaikey=None):
 def huggingface_model_inference(model_id, data, task):
     task_url = f"https://api-inference.huggingface.co/models/{model_id}" # InferenceApi does not yet support some tasks
     inference = InferenceApi(repo_id=model_id, token=config["huggingface"]["token"])
-    
+
     # NLP tasks
     if task == "question-answering":
         inputs = {"question": data["text"], "context": (data["context"] if "context" in data else "" )}
@@ -374,7 +374,7 @@ def huggingface_model_inference(model_id, data, task):
     if task in ["text-classification",  "token-classification", "text2text-generation", "summarization", "translation", "conversational", "text-generation"]:
         inputs = data["text"]
         result = inference(inputs)
-    
+
     # CV tasks
     if task == "visual-question-answering" or task == "document-question-answering":
         img_url = data["image"]
@@ -397,7 +397,7 @@ def huggingface_model_inference(model_id, data, task):
         result = r.json()
         if "path" in result:
             result["generated image"] = result.pop("path")
-    
+
     if task == "text-to-image":
         inputs = data["text"]
         img = inference(inputs)
@@ -454,7 +454,7 @@ def huggingface_model_inference(model_id, data, task):
         img_url = data["image"]
         img_data = image_to_bytes(img_url)
         result = inference(data=img_data)
- 
+
     if task == "image-to-text":
         img_url = data["image"]
         img_data = image_to_bytes(img_url)
@@ -463,7 +463,7 @@ def huggingface_model_inference(model_id, data, task):
         result = {}
         if "generated_text" in r.json()[0]:
             result["generated text"] = r.json()[0].pop("generated_text")
-    
+
     # AUDIO tasks
     if task == "text-to-speech":
         inputs = data["text"]
@@ -494,7 +494,7 @@ def huggingface_model_inference(model_id, data, task):
 
 def local_model_inference(model_id, data, task):
     task_url = f"{Model_Server}/models/{model_id}"
-    
+
     # contronlet
     if model_id.startswith("lllyasviel/sd-controlnet-"):
         img_url = data["image"]
@@ -511,7 +511,7 @@ def local_model_inference(model_id, data, task):
         if "path" in results:
             results["generated image"] = results.pop("path")
         return results
-        
+
     if task == "text-to-video":
         response = requests.post(task_url, json=data)
         results = response.json()
@@ -651,13 +651,13 @@ def get_avaliable_models(candidates, topk=5):
             thread = threading.Thread(target=get_model_status, args=(model_id, huggingfaceStatusUrl, HUGGINGFACE_HEADERS, result_queue))
             threads.append(thread)
             thread.start()
-        
+
         if inference_mode != "huggingface" and config["local_deployment"] != "minimal":
             localStatusUrl = f"{Model_Server}/status/{model_id}"
             thread = threading.Thread(target=get_model_status, args=(model_id, localStatusUrl, {}, result_queue))
             threads.append(thread)
             thread.start()
-        
+
     result_count = len(threads)
     while result_count:
         model_id, status, endpoint_type = result_queue.get()
@@ -689,7 +689,7 @@ def run_task(input, command, results, openaikey = None):
         dep_tasks = [results[dep] for dep in deps]
     else:
         dep_tasks = []
-    
+
     logger.debug(f"Run task: {id} - {task}")
     logger.debug("Deps: " + json.dumps(dep_tasks))
 
@@ -741,11 +741,11 @@ def run_task(input, command, results, openaikey = None):
     for resource in ["image", "audio"]:
         if resource in args and not args[resource].startswith("public/") and len(args[resource]) > 0 and not args[resource].startswith("http"):
             args[resource] = f"public/{args[resource]}"
-    
+
     if "-text-to-image" in command['task'] and "text" not in args:
         logger.debug("control-text-to-image task, but text is empty, so we use control-generation instead.")
         control = task.split("-")[0]
-        
+
         if control == "seg":
             task = "image-segmentation"
             command['task'] = task
@@ -805,7 +805,7 @@ def run_task(input, command, results, openaikey = None):
             inference_result = {"error": f"no available models on {command['task']} task."}
             results[id] = collect_result(command, "", inference_result)
             return False
-            
+
         if len(all_avaliable_model_ids) == 1:
             best_model_id = all_avaliable_model_ids[0]
             hosted_on = "local" if best_model_id in all_avaliable_models["local"] else "huggingface"
@@ -847,7 +847,7 @@ def run_task(input, command, results, openaikey = None):
         record_case(success=False, **{"input": input, "task": command, "reason": f"inference error: {inference_result['error']}", "op":"message"})
         results[id] = collect_result(command, choose, inference_result)
         return False
-    
+
     results[id] = collect_result(command, choose, inference_result)
     return True
 
@@ -874,7 +874,7 @@ def chat_huggingface(messages, openaikey = None, return_planning = False, return
         response = chitchat(messages, openaikey)
         record_case(success=False, **{"input": input, "task": task_str, "reason": "task parsing fail", "op":"chitchat"})
         return {"message": response}
-    
+
     if task_str == "[]":  # using LLM response for empty task
         record_case(success=False, **{"input": input, "task": [], "reason": "task parsing fail: empty", "op": "chitchat"})
         response = chitchat(messages, openaikey)
@@ -888,7 +888,7 @@ def chat_huggingface(messages, openaikey = None, return_planning = False, return
     tasks = unfold(tasks)
     tasks = fix_dep(tasks)
     logger.debug(tasks)
-    
+
     if return_planning:
         return tasks
 
@@ -921,13 +921,13 @@ def chat_huggingface(messages, openaikey = None, return_planning = False, return
             break
     for thread in threads:
         thread.join()
-    
+
     results = d.copy()
 
     logger.debug(results)
     if return_results:
         return results
-    
+
     response = response_results(input, results, openaikey).strip()
 
     end = time.time()
@@ -948,11 +948,11 @@ def test():
         "Given an image: https://huggingface.co/datasets/mishig/sample_images/resolve/main/palace.jpg, please answer the question: What is on top of the building?",
         "Please generate a canny image based on /examples/f.jpg"
         ]
-        
+
     for input in inputs:
         messages = [{"role": "user", "content": input}]
         chat_huggingface(messages)
-    
+
     # multi rounds example
     messages = [
         {"role": "user", "content": "Please generate a canny image based on /examples/f.jpg"},
@@ -982,7 +982,7 @@ def server():
     app = flask.Flask(__name__, static_folder="public", static_url_path="/")
     app.config['DEBUG'] = False
     CORS(app)
-    
+
     @cross_origin()
     @app.route('/tasks', methods=['POST'])
     def tasks():
